@@ -1,0 +1,213 @@
+name: CD Test
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  ci-backend:
+    name: CI Backend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Audit de sécurité
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Linting ESLint
+        run: npm run lint
+
+      - name: Tests Jest
+        run: npm run test:ci
+        env:
+          NODE_ENV: test
+
+  ci-frontend:
+    name: CI Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installation des dépendances
+        run: npm ci
+
+      - name: Audit de sécurité
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+      - name: Linting ESLint
+        run: npm run lint
+
+      - name: Type-check
+        run: npm run type-check
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [ci-backend, ci-frontend]
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Configuration de Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Installation des dépendances frontend
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build du frontend
+        working-directory: frontend
+        run: npm run build-only
+        env:
+          NODE_ENV: production
+
+      - name: Upload du build frontend
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
+
+      - name: Upload du backend
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-code
+          path: |
+            backend/
+            !backend/node_modules/
+          retention-days: 1
+
+  deploy-test:
+    name: Déploiement Test
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    environment:
+      name: test
+      url: http://${{ secrets.TEST_SSH_HOST }}
+
+    steps:
+      - name: Checkout du code
+        uses: actions/checkout@v4
+
+      - name: Téléchargement du build frontend
+        uses: actions/download-artifact@v4
+        with:
+          name: frontend-dist
+          path: ./dist
+
+      - name: Téléchargement du code backend
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-code
+          path: ./backend
+
+      - name: Prepare app directory permissions
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            mkdir -p /var/www/todo-app
+            sudo chown -R ${USER}:${USER} /var/www/todo-app
+            sudo chmod -R 755 /var/www/todo-app
+            mkdir -p /var/www/todo-app/dist
+            mkdir -p /var/www/todo-app/backend
+
+      - name: Remove frontend dist
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            rm -rf /var/www/todo-app/dist
+            mkdir -p /var/www/todo-app/dist
+
+      - name: Copy files to server (dist)
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          source: "./dist/*"
+          target: "/var/www/todo-app/dist"
+
+      - name: Copy files to server (backend)
+        uses: appleboy/scp-action@v1
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          source: "./backend/*"
+          target: "/var/www/todo-app/backend"
+
+      - name: Deploy app via SSH
+        uses: appleboy/ssh-action@v0.1.9
+        with:
+          host: ${{ secrets.TEST_SSH_HOST }}
+          username: ${{ secrets.TEST_SSH_USER }}
+          key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            # Assure PM2 disponible
+            sudo npm install pm2 -g
+
+            # Env: écriture de DB_URL dans le .env (évite de committer le .env)
+            mkdir -p /var/www/todo-app/backend
+            rm -f /var/www/todo-app/backend/.env
+            echo "DB_URL=${{ secrets.TEST_DB_URL }}" >> /var/www/todo-app/backend/.env
+
+            # Start backend
+            cd /var/www/todo-app/backend
+            npm install --omit=dev
+            pm2 restart todo-app-test || pm2 start app.js --name todo-app-test
+            pm2 save
+
+      - name: Vérification du déploiement
+        run: |
+          sleep 10
+          curl -f http://${{ secrets.TEST_SSH_HOST }} || echo "L'application n'est pas encore accessible"
