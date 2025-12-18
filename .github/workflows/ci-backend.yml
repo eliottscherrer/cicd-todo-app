@@ -89,6 +89,9 @@ jobs:
       - name: Installation des dépendances
         run: npm ci
 
+      - name: Création du fichier .env (CI)
+        run: echo DB_URL="${{ secrets.TEST_DB_URL }}" >> ./backend/.env
+
       - name: Exécution des tests Jest
         run: npm run test:ci
         env:
