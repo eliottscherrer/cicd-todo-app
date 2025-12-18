@@ -129,6 +129,15 @@ jobs:
       - name: Checkout du code
         uses: actions/checkout@v4
 
+      - name: Connect To VPN Server
+        uses: ./.github/actions/login-vpn
+        with:
+          host: ${{ secrets.VPN_HOST }}
+          port: ${{ secrets.VPN_PORT }}
+          username: ${{ secrets.VPN_USER }}
+          password: ${{ secrets.VPN_PASSWORD }}
+          ping_host: ${{ secrets.VPN_PING_HOST_TEST }}
+
       - name: Téléchargement du build frontend
         uses: actions/download-artifact@v4
         with:
