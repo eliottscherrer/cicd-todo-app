@@ -4,7 +4,14 @@ const path = require('path');
 const cookieParser = require('cookie-parser');
 
 // Load env vars
-process.loadEnvFile('./.env');
+try {
+  process.loadEnvFile('./.env');
+} catch (err) {
+  // CI may not have a committed .env because we use secrets. Ignore missing-file errors only
+  if (!(err && (err.code === 'ENOENT' || err.code === 'ENOTDIR'))) {
+    throw err;
+  }
+}
 
 const { sequelize: db } = require('./config/database');
 const { initModels } = require('./models');
