@@ -151,17 +151,22 @@ jobs:
           NODE_ENV: test
           PORT: 3000
 
+      - name: Démarrage du frontend (preview)
+        run: |
+          npm run preview -- --port 4173 --host 127.0.0.1 &
+          sleep 2
+
       - name: Tests Cypress - ${{ matrix.browser }}
         uses: cypress-io/github-action@v6
         with:
           working-directory: frontend
-          start: npm run preview -- --port 4173
-          wait-on: "http://localhost:4173, http://localhost:3000"
+          start: ""
+          wait-on: "http://127.0.0.1:4173, http://127.0.0.1:3000"
           wait-on-timeout: 120
           browser: ${{ matrix.browser }}
-          config: baseUrl=http://localhost:4173
+          config: baseUrl=http://127.0.0.1:4173
         env:
-          CYPRESS_BACKEND_URL: http://localhost:3000
+          CYPRESS_BACKEND_URL: http://127.0.0.1:3000
 
       - name: Upload des screenshots Cypress
         uses: actions/upload-artifact@v4
