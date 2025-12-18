@@ -90,7 +90,12 @@ jobs:
         run: npm ci
 
       - name: Création du fichier .env (CI)
-        run: echo DB_URL="${{ secrets.TEST_DB_URL }}" >> .env
+        run: |
+          cat > .env <<'EOF'
+          NODE_ENV=test
+          PORT=3000
+          DB_URL="${{ secrets.TEST_DB_URL }}"
+          EOF
 
       - name: Exécution des tests Jest
         run: npm run test:ci
