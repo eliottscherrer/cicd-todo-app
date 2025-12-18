@@ -124,7 +124,6 @@ jobs:
 
     environment:
       name: test
-      url: http://${{ secrets.TEST_SSH_HOST }}
 
     steps:
       - name: Checkout du code
