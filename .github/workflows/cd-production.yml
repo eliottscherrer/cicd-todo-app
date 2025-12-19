@@ -145,14 +145,12 @@ jobs:
 
     environment:
       name: production
-      url: http://${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_PORT }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Connect To VPN Server
-        if: ${{ secrets.VPN_HOST != '' && secrets.VPN_PORT != '' && secrets.VPN_USER != '' && secrets.VPN_PASSWORD != '' && secrets.VPN_PING_HOST_PROD != '' }}
         uses: ./.github/actions/login-vpn
         with:
           host: ${{ secrets.VPN_HOST }}
