@@ -33,7 +33,7 @@ jobs:
 
       - name: Audit de sécurité
         run: npm audit --audit-level=high
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Linting ESLint
         run: npm run lint
@@ -67,7 +67,7 @@ jobs:
 
       - name: Audit de sécurité
         run: npm audit --audit-level=high
-        continue-on-error: true
+        continue-on-error: false
 
       - name: Linting ESLint
         run: npm run lint
