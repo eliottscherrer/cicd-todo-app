@@ -14,74 +14,13 @@ permissions:
 jobs:
   ci-backend:
     name: CI Backend
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: backend
-
-    steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Configuration de Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
-
-      - name: Installation des dépendances
-        run: npm ci
-
-      - name: Audit de sécurité
-        run: npm audit --audit-level=high
-
-      - name: Linting ESLint
-        run: npm run lint
-
-      - name: Tests Jest
-        run: npm run test:ci
-        env:
-          NODE_ENV: test
-
-      - name: Upload couverture backend
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-coverage
-          path: backend/coverage/
-          retention-days: 30
+    uses: ./.github/workflows/ci-backend.yml
+    secrets: inherit
 
   ci-frontend:
     name: CI Frontend
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: frontend
-
-    steps:
-      - name: Checkout du code
-        uses: actions/checkout@v4
-
-      - name: Configuration de Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Installation des dépendances
-        run: npm ci
-
-      - name: Audit de sécurité
-        run: npm audit --audit-level=high
-
-      - name: Linting ESLint
-        run: npm run lint
-
-      - name: Type-check
-        run: npm run type-check
+    uses: ./.github/workflows/ci-frontend.yml
+    secrets: inherit
 
   e2e-tests:
     name: E2E - ${{ matrix.browser }}
