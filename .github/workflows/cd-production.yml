@@ -165,9 +165,9 @@ jobs:
             npm install --omit=dev
 
             # Ensure PM2 process uses correct cwd/script even if it existed before
-            pm2 delete todo-app-production || true
-            pm2 start /var/www/todo-app/backend/app.js --name todo-app-production --cwd /var/www/todo-app/backend
-            pm2 save
+            sudo pm2 delete todo-app-production || true
+            sudo pm2 start /var/www/todo-app/backend/app.js --name todo-app-production --cwd /var/www/todo-app/backend --env production
+            sudo pm2 save
 
       - name: Vérification du déploiement
         run: |
