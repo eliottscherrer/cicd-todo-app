@@ -211,7 +211,7 @@ jobs:
             sudo npm install pm2 -g
 
             # Add mandatory env variables
-            echo "NODE_ENV=dev" > /var/www/todo-app/backend/.env
+            echo "NODE_ENV=development" > /var/www/todo-app/backend/.env
             echo "PORT=${{ secrets.TEST_PORT }}" >> /var/www/todo-app/backend/.env
             echo "DB_URL='${{ secrets.TEST_DB_URL }}'" >> /var/www/todo-app/backend/.env
 
