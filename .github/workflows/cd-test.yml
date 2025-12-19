@@ -210,6 +210,10 @@ jobs:
             # Assure PM2 disponible
             sudo npm install pm2 -g
 
+            # Add mandatory env variables
+            echo "NODE_ENV=dev" > /var/www/todo-app/backend/.env
+            echo "PORT=${{ secrets.TEST_PORT }}" >> /var/www/todo-app/backend/.env
+            echo "DB_URL='${{ secrets.TEST_DB_URL }}'" >> /var/www/todo-app/backend/.env
 
             # Start backend
             cd /var/www/todo-app/backend
