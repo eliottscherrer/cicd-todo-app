@@ -206,23 +206,33 @@ jobs:
 
     environment:
       name: production
-      url: http://${{ secrets.PROD_SSH_HOST }}
+      url: http://${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_PORT }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Connect To VPN Server
+        if: ${{ secrets.VPN_HOST != '' && secrets.VPN_PORT != '' && secrets.VPN_USER != '' && secrets.VPN_PASSWORD != '' && secrets.VPN_PING_HOST_PROD != '' }}
+        uses: ./.github/actions/login-vpn
+        with:
+          host: ${{ secrets.VPN_HOST }}
+          port: ${{ secrets.VPN_PORT }}
+          username: ${{ secrets.VPN_USER }}
+          password: ${{ secrets.VPN_PASSWORD }}
+          ping_host: ${{ secrets.VPN_PING_HOST_PROD }}
+
       - name: Download Artifacts (frontend build)
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist-prod
-          path: ./dist
+          path: dist
 
       - name: Download Artifacts (backend)
         uses: actions/download-artifact@v4
         with:
           name: backend-code-prod
-          path: ./backend
+          path: backend
 
       - name: Prepare app directory permissions
         uses: appleboy/ssh-action@v0.1.9
@@ -232,9 +242,11 @@ jobs:
           key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
           port: 22
           script: |
+            sudo mkdir -p /var/www/todo-app
             sudo mkdir -p /var/www/todo-app/dist
             sudo mkdir -p /var/www/todo-app/backend
-            sudo chown -R ${USER}:${USER} /var/www/todo-app
+
+            sudo chown -R $USER:$USER /var/www/todo-app
             sudo chmod -R 755 /var/www/todo-app
 
       - name: Remove FRONTEND
@@ -247,7 +259,7 @@ jobs:
           script: |
             sudo rm -rf /var/www/todo-app/dist
             sudo mkdir -p /var/www/todo-app/dist
-            sudo chown -R ${USER}:${USER} /var/www/todo-app/dist
+            sudo chown -R $USER:$USER /var/www/todo-app/dist
 
       - name: Copy files to Server (dist)
         uses: appleboy/scp-action@v1
@@ -255,8 +267,9 @@ jobs:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          source: "./dist/*"
+          source: "dist/**"
           target: "/var/www/todo-app/dist"
+          strip_components: 1
 
       - name: Copy files to Server (backend)
         uses: appleboy/scp-action@v1
@@ -264,8 +277,9 @@ jobs:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
           key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
-          source: "./backend/*"
+          source: "backend/**"
           target: "/var/www/todo-app/backend"
+          strip_components: 1
 
       - name: Deploy App via SSH
         uses: appleboy/ssh-action@v0.1.9
@@ -275,29 +289,32 @@ jobs:
           key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            cd /var/www/todo-app
+            # Assure PM2 disponible
             sudo npm install pm2 -g
 
-            # docker compose up (si un docker-compose.yml est présent côté serveur)
-            if [ -f docker-compose.yml ] || [ -f docker-compose.yaml ]; then
-              docker compose up -d
-            fi
+            # Add mandatory env variables
+            echo "NODE_ENV=production" > /var/www/todo-app/backend/.env
+            echo "PORT=${{ secrets.PROD_PORT }}" >> /var/www/todo-app/backend/.env
+            echo "DB_URL='${{ secrets.PROD_DB_URL }}'" >> /var/www/todo-app/backend/.env
 
-            # env
-            rm -f ./backend/.env
-            echo "DB_URL=${{ secrets.PROD_DB_URL }}" >> ./backend/.env
-
-            # start backend
-            cd ./backend
+            # Start backend
+            cd /var/www/todo-app/backend
             npm install --omit=dev
-            pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+
+            # Ensure PM2 process uses correct cwd/script even if it existed before
+            pm2 delete todo-app-production || true
+            pm2 start /var/www/todo-app/backend/app.js --name todo-app-production --cwd /var/www/todo-app/backend
             pm2 save
 
       - name: Vérification du déploiement
         run: |
-          sleep 15
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://${{ secrets.PROD_SSH_HOST }} || echo "000")
-          echo "HTTP=$HTTP_CODE"
+          sleep 5
+          curl -fsS \
+            --retry 10 \
+            --retry-delay 3 \
+            --retry-connrefused \
+            --max-time 5 \
+            http://${{ secrets.PROD_SSH_HOST }}:${{ secrets.PROD_PORT }}/
 
   notify:
     name: Notification
