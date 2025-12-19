@@ -73,7 +73,7 @@ jobs:
         with:
           working-directory: frontend
           start: npm run preview -- --port 4173
-          wait-on: "http://localhost:4173, http://localhost:3000"
+          wait-on: "http://localhost:4173, http://localhost:3000/health"
           wait-on-timeout: 120
           browser: ${{ matrix.browser }}
           config: baseUrl=http://localhost:4173

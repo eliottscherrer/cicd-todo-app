@@ -156,7 +156,7 @@ jobs:
         with:
           working-directory: frontend
           start: ""
-          wait-on: "http://127.0.0.1:4173, http://127.0.0.1:3000"
+          wait-on: "http://127.0.0.1:4173, http://127.0.0.1:3000/health"
           wait-on-timeout: 120
           browser: ${{ matrix.browser }}
           config: baseUrl=http://127.0.0.1:4173
