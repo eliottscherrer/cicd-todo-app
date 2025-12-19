@@ -206,13 +206,10 @@ jobs:
             # Assure PM2 disponible
             sudo npm install pm2 -g
 
-            # Env: écriture de DB_URL dans le .env (évite de committer le .env)
-            mkdir -p /var/www/todo-app/backend
-            rm -f /var/www/todo-app/backend/.env
-            echo "DB_URL=${{ secrets.TEST_DB_URL }}" >> /var/www/todo-app/backend/.env
+            echo "DB_URL=${{ secrets.TEST_DB_URL }}" >> /var/www/todo-app/backend/backend/.env
 
             # Start backend
-            cd /var/www/todo-app/backend
+            cd /var/www/todo-app/backend/backend
             npm install --omit=dev
             pm2 restart todo-app-test || pm2 start app.js --name todo-app-test
             pm2 save
