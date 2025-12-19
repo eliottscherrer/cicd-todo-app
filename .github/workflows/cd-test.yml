@@ -142,13 +142,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-dist
-          path: ./dist
+          path: .
 
       - name: Téléchargement du code backend
         uses: actions/download-artifact@v4
         with:
           name: backend-code
-          path: ./backend
+          path: .
 
       - name: Prepare app directory permissions
         uses: appleboy/ssh-action@v0.1.9
@@ -183,8 +183,9 @@ jobs:
           host: ${{ secrets.TEST_SSH_HOST }}
           username: ${{ secrets.TEST_SSH_USER }}
           key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
-          source: "./dist/*"
+          source: "dist/**"
           target: "/var/www/todo-app/dist"
+          strip_components: 1
 
       - name: Copy files to server (backend)
         uses: appleboy/scp-action@v1
@@ -192,8 +193,9 @@ jobs:
           host: ${{ secrets.TEST_SSH_HOST }}
           username: ${{ secrets.TEST_SSH_USER }}
           key: ${{ secrets.TEST_SSH_PRIVATE_KEY }}
-          source: "./backend/*"
+          source: "backend/**"
           target: "/var/www/todo-app/backend"
+          strip_components: 1
 
       - name: Deploy app via SSH
         uses: appleboy/ssh-action@v0.1.9
@@ -206,12 +208,14 @@ jobs:
             # Assure PM2 disponible
             sudo npm install pm2 -g
 
-            echo "DB_URL=${{ secrets.TEST_DB_URL }}" >> /var/www/todo-app/backend/backend/.env
 
             # Start backend
-            cd /var/www/todo-app/backend/backend
+            cd /var/www/todo-app/backend
             npm install --omit=dev
-            pm2 restart todo-app-test || pm2 start app.js --name todo-app-test
+
+            # Ensure PM2 process uses correct cwd/script even if it existed before
+            pm2 delete todo-app-test || true
+            pm2 start /var/www/todo-app/backend/app.js --name todo-app-test --cwd /var/www/todo-app/backend
             pm2 save
 
       - name: Vérification du déploiement
@@ -223,5 +227,5 @@ jobs:
             --retry-delay 3 \
             --retry-connrefused \
             --max-time 5 \
-            http://${{ secrets.TEST_SSH_HOST }}
+            http://${{ secrets.TEST_SSH_HOST }}:${{ secrets.TEST_PORT }}/
         continue-on-error: false
