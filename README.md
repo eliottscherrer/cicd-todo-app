@@ -4,8 +4,13 @@
   <a href="https://github.com/eliottscherrer/cicd-todo-app/actions/workflows/cd-test.yml">
     <img src="https://github.com/eliottscherrer/cicd-todo-app/actions/workflows/cd-test.yml/badge.svg" alt="CD Test">
   </a>
+
   <a href="https://github.com/eliottscherrer/cicd-todo-app/actions/workflows/cd-production.yml">
     <img src="https://github.com/eliottscherrer/cicd-todo-app/actions/workflows/cd-production.yml/badge.svg" alt="CD Production">
+  </a>
+  
+  <a href="https://codecov.io/github/eliottscherrer/cicd-todo-app" >
+    <img src="https://codecov.io/github/eliottscherrer/cicd-todo-app/graph/badge.svg?token=BJIDGRCNHJ"/> 
   </a>
 </div>
 
