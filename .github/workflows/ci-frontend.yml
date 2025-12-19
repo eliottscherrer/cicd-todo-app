@@ -8,6 +8,12 @@ on:
       - "frontend/**"
       - ".github/workflows/ci-frontend.yml"
   workflow_call:
+    inputs:
+      skip-tests:
+        description: "Skip tests"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   audit:
@@ -99,6 +105,7 @@ jobs:
 
   e2e-tests:
     name: E2E - ${{ matrix.browser }}
+    if: ${{ !inputs.skip-tests }}
     runs-on: ubuntu-latest
     needs: [build]
     env:
@@ -125,6 +132,14 @@ jobs:
           cache-dependency-path: |
             frontend/package-lock.json
             backend/package-lock.json
+
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: cypress-${{ runner.os }}-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            cypress-${{ runner.os }}-
 
       - name: Installation des dépendances frontend
         run: npm ci

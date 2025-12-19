@@ -19,11 +19,15 @@ jobs:
   ci-backend:
     name: CI Backend
     uses: ./.github/workflows/ci-backend.yml
+    with:
+      skip-tests: true
     secrets: inherit
 
   ci-frontend:
     name: CI Frontend
     uses: ./.github/workflows/ci-frontend.yml
+    with:
+      skip-tests: true
     secrets: inherit
 
   build:
