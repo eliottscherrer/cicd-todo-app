@@ -216,5 +216,12 @@ jobs:
 
       - name: Vérification du déploiement
         run: |
-          sleep 10
-          curl -f http://${{ secrets.TEST_SSH_HOST }} || echo "L'application n'est pas encore accessible"
+          # Laisse un peu de temps au service de démarrer, puis retry en cas de connexion refusée.
+          sleep 5
+          curl -fsS \
+            --retry 10 \
+            --retry-delay 3 \
+            --retry-connrefused \
+            --max-time 5 \
+            http://${{ secrets.TEST_SSH_HOST }}
+        continue-on-error: false
